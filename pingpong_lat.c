@@ -1,5 +1,5 @@
-/* 
- * Copyright 2014, Simon Pickartz Institute for Automation 
+/*
+ * Copyright 2014, Simon Pickartz Institute for Automation
  *                                of Complex Power Systems,
  *                                RWTH Aachen University
  *
@@ -20,52 +20,51 @@
  *
  */
 
-#include <string.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <time.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <mpi.h>
 
 #include <stat_eval.h>
 
 #undef _WATCH_DOG_
-#define  _CACHE_WARM_UP_
-#undef  _USE_SEPARATED_BUFFERS_
-#undef  _PRINT_INDIVIDUAL_RES_
+#define _CACHE_WARM_UP_
+#undef _USE_SEPARATED_BUFFERS_
+#undef _PRINT_INDIVIDUAL_RES_
 
-#define MAXBUFSIZE 	(64)
-#define DEFAULTLEN 	(0) 
-#define DEFAULTROUNDS 	(10000) 
-#define DEFAULTITER 	(1) 
-#define WARMUPITER 	(10000) 
+#define MAXBUFSIZE (64)
+#define DEFAULTLEN (0)
+#define DEFAULTROUNDS (10000)
+#define DEFAULTITER (1)
+#define WARMUPITER (10000)
 
 #ifdef _USE_SEPARATED_BUFFERS_
-unsigned char send_buffer[MAXBUFSIZE+1];
-unsigned char recv_buffer[MAXBUFSIZE+1];
+unsigned char send_buffer[MAXBUFSIZE + 1];
+unsigned char recv_buffer[MAXBUFSIZE + 1];
 #else
 #define send_buffer buffer
 #define recv_buffer buffer
-unsigned char buffer[MAXBUFSIZE+1];
+unsigned char buffer[MAXBUFSIZE + 1];
 #endif
 unsigned char dummy = 0;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	int arg;
 	uint32_t i;
 	int32_t num_ranks;
 	int32_t remote_rank, my_rank;
-	
+
 	uint32_t length = DEFAULTLEN;
 	uint32_t iterations = DEFAULTITER;
 	int32_t numrounds = DEFAULTROUNDS;
 	int32_t round;
-	
+
 	double timer;
 	double *time_stamps = NULL;
 	stat_eval_t stat_eval;
@@ -89,16 +88,14 @@ int main(int argc, char **argv)
 				iterations = atoi(optarg);
 				break;
 			case 'h':
-				printf("usage %s [-l message_length (def: %d)] "
-				       "[-i iterations (def: %d)] "
-				       "[-r rounds (def: %d)] "
-				       "[-f filename]\n", 
-				    argv[0],
-				    DEFAULTLEN,
-				    DEFAULTITER,
+				printf(
+				    "usage %s [-l message_length (def: %d)] "
+				    "[-i iterations (def: %d)] "
+				    "[-r rounds (def: %d)] "
+				    "[-f filename]\n",
+				    argv[0], DEFAULTLEN, DEFAULTITER,
 				    DEFAULTROUNDS);
 				exit(0);
-
 		}
 	}
 
@@ -107,21 +104,18 @@ int main(int argc, char **argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
 
-
 	/* check for errors and determine remote rank */
 	if (num_ranks != 2) {
-		if(my_rank == 0) 
-			fprintf(stderr, 
-			    "Pingpong needs exactly two UEs; try again\n");
+		if (my_rank == 0)
+			fprintf(stderr,
+				"Pingpong needs exactly two UEs; try again\n");
 		exit(-1);
 	}
-	remote_rank = (my_rank+1)%2;
+	remote_rank = (my_rank + 1) % 2;
 
-
-	/* perform a warm-up of the cache */
+/* perform a warm-up of the cache */
 #ifdef _CACHE_WARM_UP_
-	for(i=0; i < length; i++)
-	{
+	for (i = 0; i < length; i++) {
 		/* cache warm-up: */
 		dummy += send_buffer[i];
 		dummy += recv_buffer[i];
@@ -133,7 +127,7 @@ int main(int argc, char **argv)
 		run_infinitely = true;
 	} else {
 		run_infinitely = false;
-		time_stamps = (double*)calloc(sizeof(double), numrounds);
+		time_stamps = (double *)calloc(sizeof(double), numrounds);
 	}
 
 	if (my_rank == 0) {
@@ -154,104 +148,69 @@ int main(int argc, char **argv)
 
 	/* synchronize and start the PingPong */
 	MPI_Barrier(MPI_COMM_WORLD);
-	if(my_rank == 0) {
-		for (i=0; i<WARMUPITER; ++i) {
-			MPI_Send(send_buffer, 
-			    length, 
-			    MPI_CHAR, 
-			    remote_rank, 
-			    0, 
-			    MPI_COMM_WORLD);
-			MPI_Recv(recv_buffer, 
-			    length, 
-			    MPI_CHAR, 
-			    remote_rank, 
-			    0, 
-			    MPI_COMM_WORLD, 
-			    &status);
+	if (my_rank == 0) {
+		for (i = 0; i < WARMUPITER; ++i) {
+			MPI_Send(send_buffer, length, MPI_CHAR, remote_rank, 0,
+				 MPI_COMM_WORLD);
+			MPI_Recv(recv_buffer, length, MPI_CHAR, remote_rank, 0,
+				 MPI_COMM_WORLD, &status);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 
-		for (round = 0; run_infinitely || (round < numrounds); ++round) {
+		for (round = 0; run_infinitely || (round < numrounds);
+		     ++round) {
 			/* start timer: */
 			timer = MPI_Wtime();
 
-			for (i=0; i<iterations; ++i) {
-				MPI_Send(send_buffer, 
-					 length, 
-					 MPI_CHAR, 
-					 remote_rank, 
-					 0, 
-					 MPI_COMM_WORLD);
-				MPI_Recv(recv_buffer, 
-				    	 length, 
-					 MPI_CHAR, 
-					 remote_rank, 
-					 0, 
-					 MPI_COMM_WORLD, 
+			for (i = 0; i < iterations; ++i) {
+				MPI_Send(send_buffer, length, MPI_CHAR,
+					 remote_rank, 0, MPI_COMM_WORLD);
+				MPI_Recv(recv_buffer, length, MPI_CHAR,
+					 remote_rank, 0, MPI_COMM_WORLD,
 					 &status);
 			}
 
 			/* stop timer: */
 			timer = (MPI_Wtime() - timer);
 			if (run_infinitely == false)
-				time_stamps[round] = timer*1e6/(2*iterations);
+				time_stamps[round] =
+				    timer * 1e6 / (2 * iterations);
 #ifdef _PRINT_INDIVIDUAL_RES_
-			printf("%d\t\t%1.2lf\t\t%1.2lf\n", 
-			       length, 
-			       timer/(2.0*iterations)*1000000, 
-			       (length/(timer/(2.0*iterations)))/(1024*1024));
+			printf("%d\t\t%1.2lf\t\t%1.2lf\n", length,
+			       timer / (2.0 * iterations) * 1000000,
+			       (length / (timer / (2.0 * iterations))) /
+				   (1024 * 1024));
 			fflush(stdout);
 
 #endif
 #ifdef _WATCH_DOG_
-			if (!(round%100000))
-				printf("Round %d ...\n", round);
+			if (!(round % 100000)) printf("Round %d ...\n", round);
 #endif
 		}
 	} else {
-		for (i=0; i<WARMUPITER; ++i) {
-			MPI_Recv(recv_buffer, 
-			    length, 
-			    MPI_CHAR, 
-			    remote_rank, 
-			    0, 
-			    MPI_COMM_WORLD, 
-			    &status);
-			MPI_Send(send_buffer, 
-			    length, 
-			    MPI_CHAR, 
-			    remote_rank, 
-			    0, 
-			    MPI_COMM_WORLD);
+		for (i = 0; i < WARMUPITER; ++i) {
+			MPI_Recv(recv_buffer, length, MPI_CHAR, remote_rank, 0,
+				 MPI_COMM_WORLD, &status);
+			MPI_Send(send_buffer, length, MPI_CHAR, remote_rank, 0,
+				 MPI_COMM_WORLD);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 
-		for (round = 0; run_infinitely || (round < numrounds); ++round) {
-			for (i=0; i<iterations; ++i) {
-				MPI_Recv(recv_buffer, 
-				    length, 
-				    MPI_CHAR, 
-				    remote_rank, 
-				    0, 
-				    MPI_COMM_WORLD, 
+		for (round = 0; run_infinitely || (round < numrounds);
+		     ++round) {
+			for (i = 0; i < iterations; ++i) {
+				MPI_Recv(recv_buffer, length, MPI_CHAR,
+					 remote_rank, 0, MPI_COMM_WORLD,
 					 &status);
-				MPI_Send(send_buffer, 
-				    	 length, 
-					 MPI_CHAR, 
-					 remote_rank, 
-					 0, 
-					 MPI_COMM_WORLD);
+				MPI_Send(send_buffer, length, MPI_CHAR,
+					 remote_rank, 0, MPI_COMM_WORLD);
 			}
-
 		}
 	}
 
 	/* Statistical evaluation */
 	if ((my_rank == 0) && (run_infinitely == false)) {
-		statistical_eval(time_stamps, 
-		    numrounds, 
-		    &stat_eval);
+		statistical_eval(time_stamps, numrounds, &stat_eval);
 
 		/* print the results */
 		FILE *output = stdout;
@@ -268,4 +227,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
