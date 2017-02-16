@@ -1,0 +1,4 @@
+*.o
+pingpong_lat
+pingpong_length
+bcast_lat
