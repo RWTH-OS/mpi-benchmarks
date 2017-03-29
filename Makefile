@@ -8,7 +8,7 @@ RM              := rm -f
 
 SRCS        	:= $(wildcard *.c)
 OBJS        	:= $(patsubst %.c,%.o,$(SRCS))
-BINS        	:= pingpong_lat pingpong_length bcast_lat
+BINS        	:= pingpong_lat pingpong_length pingpong_ts
 
 .PHONY: clean
 
@@ -17,7 +17,7 @@ all: $(BINS)
 pingpong_lat: pingpong_lat.o stat_eval.o
 	$(LD) $(LIBS) $(LDFLAGS) -o $@ $^
 
-bcast_lat: bcast_lat.o stat_eval.o
+pingpong_ts: pingpong_ts.o
 	$(LD) $(LIBS) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
